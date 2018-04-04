@@ -1,2 +1,2 @@
 # pd-geohub-migration
-Migrating geodata from Socrata to GeoHub
+Migrating LAPD geodata from Socrata to GeoHub
