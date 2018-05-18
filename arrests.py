@@ -1,14 +1,16 @@
 
 ## Importing required packages
 
-from sodapy import Socrata as sc
 import pandas as pd
 import json
 import credentials as cd
 import datetime as dt
 import os
 import geopandas as gpd
+import shapely
 import arrest_functions as ar
+from sodapy import Socrata as sc
+
 
 
 def age_check(df):
@@ -242,7 +244,28 @@ def validate_location(df):
         print('Outliers found in location column at row number: {}'.format(','.join([str(s) for s in out])))
         return 
     
+
+def validate_location_1(df):
+    '''
     
+    This functions converts the location1 column to a shapely point column and checks if the points lie in 
+    LA city boundary polygon.
+    
+    '''
+    df['lonlat']= [df.location_1[i]['coordinates'] for i in range(len(df))]
+    # Create Point Geometry for based on lonlat column
+    df['geometry']=df[['lonlat']].applymap(lambda x:shapely.geometry.Point(x))
+    df = gpd.GeoDataFrame(df, geometry="geometry")
+    # set crs
+    df.crs = {'init': 'epsg:4326'}
+    
+    ## Chcek for point in polygon
+    
+    df['within_result']  = df.geometry.within(file.geometry[0])
+    
+    print('Points in the dataset not within the LA City boundary are : {}'.format(df[df.within_result == False].index.tolist()))
+    
+    return
     
     
 def main():
@@ -252,13 +275,14 @@ def main():
     ## My credentials are stored in credentials file that I've imported here
     client = sc(domain = "data.lacity.org", app_token = cd.app_token, username = cd.username, password = cd.password)
     
-    results = client.get("7qi3-mqr5", limit=1000000)
+    results = client.get("7qi3-mqr5", limit=10000000000)
     data = pd.DataFrame.from_records(results)
     
     ## Downloading files for reporting districts
     os.system("wget https://opendata.arcgis.com/datasets/4398360b1a0242b78904f46b3786ae73_0.geojson")
     
     gpd_data = gpd.GeoDataFrame.from_file('4398360b1a0242b78904f46b3786ae73_0.geojson')
+    file = gpd.GeoDataFrame.from_file('geo_export_33305afa-e344-43b1-b630-a81c96132ffd.shp')
     
     ##Defining gloval variables and assigning values to them
     global list_area, list_arrst, list_charge, list_charge_desc, list_charge_grp_desc, list_repdist
@@ -287,6 +311,7 @@ def main():
     validate_sex(data)
     validate_time(data)
     validate_location(data)
+    validate_location_1(data) ## This function would take about 20-30 minutes to run. 
     
 
 if __name__ == "__main__":
