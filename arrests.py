@@ -245,7 +245,7 @@ def validate_location(df):
         return 
     
 
-def validate_location_1(df):
+def validate_location_1_gpd(df):
     '''
     
     This functions converts the location1 column to a shapely point column and checks if the points lie in 
@@ -264,6 +264,40 @@ def validate_location_1(df):
     df['within_result']  = df.geometry.within(file.geometry[0])
     
     print('Points in the dataset not within the LA City boundary are : {}'.format(df[df.within_result == False].index.tolist()))
+    
+    return
+
+def merge_list(list1, list2):
+    resulting_list = list(list1)
+    resulting_list.extend(x for x in list2 if x not in resulting_list)
+    resulting_list = list(set(resulting_list))
+    return resulting_list
+
+def validate_location_1(df):
+    '''
+    
+    This function extracts the lat and the lon provided in the dataset and checks if the points are within the 
+    limits of the city of LA. 
+    Note: This also includes the unknown locations that are for now geocoded as (0,0)
+    
+    '''
+    df['lon'] = [df.location_1[i]['coordinates'][0] for i in range(len(df))]
+    df['lat'] = [df.location_1[i]['coordinates'][1] for i in range(len(df))]
+    
+    ## Bounding Box for LA city (-118.66819,33.703621,-118.155296,34.337307)
+    
+    lon_list_1 = df[df.lon> -118.155296].index.tolist()
+    lon_list_2 = df[df.lon< -118.66819].index.tolist()
+
+    lat_list_1 = df[df.lat> 34.337307].index.tolist()
+    lat_list_2 = df[df.lat< 33.703621].index.tolist()
+    
+    lon_list = merge_list(lon_list_1, lon_list_2)
+    lat_list = merge_list(lat_list_1, lat_list_2)
+
+    latlon_list = merge_list(lon_list, lat_list)
+    
+    print('Rows in the dataset not within the LA City boundary are : {}'.format(latlon_list))
     
     return
     
@@ -311,7 +345,8 @@ def main():
     validate_sex(data)
     validate_time(data)
     validate_location(data)
-    validate_location_1(data) ## This function would take about 20-30 minutes to run. 
+    ## validate_location_1_gpd(data) ## Only if you want to validate using geopandas. This function would take about 20 minutes to run. 
+    validate_location_1(data)
     
 
 if __name__ == "__main__":
